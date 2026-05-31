@@ -15,7 +15,7 @@
 * [Data Context](#-data-context)
 * [Technical Structure](#-technical-structure)
 * [Database Schema and Governance](#-database-schema-and-governance)
-* [Data Integrity and Analysis](#-data-integrity-and-analysis)
+* [Feature Engineering and Bias Mitigation](#-feature-engineering-and-bias-mitigation)
   * [The Medication Burden Index (MBI)](#the-medication-burden-index-mbi)
   * [Imputation to restore physiologic variance](#imputation-to-restore-physiologic-variance)
     * [Imputation sensitivity analysis](#imputation-sensitivity-analysis)
@@ -82,7 +82,7 @@ To transition this dataset from a flat file to an analytics-ready warehouse, the
 
 ![Database schema](assets/database_schema.png)
 
-## 📈 Data integrity and analysis
+## 🛠️ Feature engineering and bias mitigation
 ### The Medication Burden Index (MBI)
 The MBI transforms fragmented medication lists into a single, actionable score that quantifies how aggresively a patient is being medically managed, which serves as a proxy for both physiological severity and care complexity.
 
