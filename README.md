@@ -78,6 +78,7 @@ This analysis focuses on the Phase 1 - 2025 Cohort. To ensure clinical relevance
 ## 💽 Database schema and governance
 To transition this dataset from a flat file to an analytics-ready warehouse, the database layer implements a **5-table Snowflake Schema** . While this structure enforces **Third Normal Form (3NF)** compliance across core tables to eliminate update anomalies, it implements a pragmatic, **denormalized hybrid strategy** within the associative entities to optimize analytic queries:
 
+* **Data Governance & Privacy:** All underlying source rows have been completely stripped of Protected Health Information (PHI) identifiers, ensuring full anonymization and alignment with international medical data privacy standards before pipeline ingest.
 * **Entity Isolation:** Patient-level continuous demographics and baseline variables are strictly isolated within `fact_patient`, anchoring the baseline denominator ($N=152$).
 * **Nomenclature Normalization:** Dimension tables `dim_diagnoses` and `dim_medications` function as a single source of truth, enforcing clean text constraints and eliminating manual string typographical variances.
 * **Many-to-Many Resolution:** Complex multi-valvular disease records and polypharmacy exposures are decoupled into dedicated bridge tables (`bridge_diagnoses` and `bridge_medications`). This database design allows to execute localized cohort queries without duplicating core patient parameters.  
