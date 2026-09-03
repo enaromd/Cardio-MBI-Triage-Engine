@@ -18,6 +18,13 @@ Insights and recommendations are provided on the following key areas:
 - **[Natural Normal Gaussian Imputation & Sensitivity Analysis](#natural-normal-gaussian-imputation--sensitivity-analysis)**
 - **[Medication Burden Index (MBI) as a Triage Tool](#medication-burden-index-mbi-as-a-triage-tool)**
 
+### Project Resources & Links
+
+- **[Data Transformation & Engineering Notebook](https://github.com/enaromd/Cardio-MBI-Triage-Engine/blob/main/notebooks/01_extraction_transformation.ipynb)**
+- **[Centralized Configuration ("Medical Brain")](https://github.com/enaromd/Cardio-MBI-Triage-Engine/blob/main/modules/config.py)**
+- **[Data Analysis Notebook](https://github.com/enaromd/Cardio-MBI-Triage-Engine/blob/main/notebooks/03_analysis.ipynb)**
+- **[Interactive Mission Triage Dashboard](https://public.tableau.com/app/profile/enyel.a.rodr.guez.g./viz/MBIstratification/MBIstratification)**
+
 ## Data structure & initial checks
 
 The project's underlying MySQL database structure, engineered from digitized bedside charts to power the Tableau dashboard, consists of five tables anchored on $N = 152$ patient records. A description of each table is as follows:
@@ -76,7 +83,7 @@ By pairing structural echo severity with the engineered Medication Burden Index 
 
 ![MBI Zones](assets/output_triage_zones.png)
 
-# Recommendations
+## Recommendations
 
 Based on the insights and findings above, we would recommend the cardiology mission team to consider the following:
 
@@ -86,7 +93,7 @@ Based on the insights and findings above, we would recommend the cardiology miss
 
 - **Deploy "Undertreatment" Alerts for High-Acuity Access Barriers.** Cross-reference qualitative echo severity against pharmacological load to trigger priority pharmacy and social work consultations for patients with severe valvular lesions but $MBI < 1.0$, exposing critical medication access barriers.
 
-# Assumptions and Caveats
+## Assumptions and Caveats
 
 Throughout the analysis, multiple assumptions were made to manage challenges with the data. These assumptions and caveats are noted below:
 
