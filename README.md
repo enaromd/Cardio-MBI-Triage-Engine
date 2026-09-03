@@ -45,9 +45,9 @@ The project's underlying MySQL database structure, engineered from digitized bed
 
 ### Overview of findings
 
-An audit of the 2025 General Cardiology Clinic ($N=152$) reveals that missingness in echocardiographic parameters is Missing Not At Random (MNAR), driven by clinicians selectively omitting quantitative measurements when qualitative scans show non-pathological features. To prevent dropping 80% of incomplete patient cases, the pipeline applies Natural Normal Gaussian Imputation to unmeasured echo fields, preserving true population variance without distorting clinical risk.
+An audit of the 2025 General Cardiology Clinic ($N=152$) reveals that missingness in echocardiographic parameters is Missing Not At Random (MNAR), driven by clinicians selectively omitting quantitative measurements when qualitative scans show non-pathological features. To prevent dropping $80\%$ of incomplete patient cases, the pipeline applies Natural Normal Gaussian Imputation to unmeasured echo fields, preserving true population variance without distorting clinical risk.
 
-By pairing structural echo severity with the engineered Medication Burden Index (MBI), this pipeline introduces a Diagnostic Discordance Framework. Uncovering divergence between anatomical disease (echo) and pharmacological intensity (MBI) exposes a baseline Native Constant (MBI = 2.27) and a Critical Red Flag Threshold (MBI = 5.25), operationalizing MBI as an objective, point-of-registration triage score to prioritize high-yield intervention candidates and catch end-stage hemodynamic decompensation.
+By pairing structural echo severity with the engineered Medication Burden Index (MBI), this pipeline introduces a Diagnostic Discordance Framework. Uncovering divergence between anatomical disease (echo) and pharmacological intensity (MBI) exposes a baseline Native Constant ($MBI = 2.27$) and a Critical Red Flag Threshold ($MBI = 5.25$), operationalizing MBI as an objective, point-of-registration triage score to prioritize high-yield intervention candidates and catch end-stage hemodynamic decompensation.
 
 ![MBI Zones](assets/dashboard.png)
 
@@ -55,17 +55,17 @@ By pairing structural echo severity with the engineered Medication Burden Index 
 
 ### Forensic data audit
 
-- **Triage Vitals Achieve 99.67% Completeness:** Physical and physiological safety metrics recorded a missingness rate of 0.33% ($n=151.5$ complete records), verifying that frontline nursing triage captures baseline parameters reliably across the entire cohort.
+- **Triage Vitals Achieve 99.67% Completeness:** Physical and physiological safety metrics recorded a missingness rate of $0.33\%$ ($n=151.5$ complete records), verifying that frontline nursing triage captures baseline parameters reliably across the entire cohort.
 
-- **Structural Dimensions Exhibit 81.77% Selective Sparsity:** Anatomical dimension parameters (IVSd, LVIDd, LVPWd, LVIDs) showed an average missingness of 81.77%, confirming that clinicians document precise caliper measurements primarily when obvious chamber enlargement is observed.
+- **Structural Dimensions Exhibit 81.77% Selective Sparsity:** Anatomical dimension parameters ($\text{IVSd, LVIDd, LVPWd, LVIDs}$) showed an average missingness of $81.77\%$, confirming that clinicians document precise caliper measurements primarily when obvious chamber enlargement is observed.
 
-- **Hemodynamic Metrics Dropout at 66.89%:** Functional echo variables (TR Vmax, RVSP, MS MG) showed 66.89% missingness, with peak pressure gradients recorded almost exclusively during active valvular regurgitation or stenosis.
+- **Hemodynamic Metrics Dropout at 66.89%:** Functional echo variables ($\text{TR Vmax, RVSP, MS MG}$) showed $66.89\%$ missingness, with peak pressure gradients recorded almost exclusively during active valvular regurgitation or stenosis.
 
 ![MBI Zones](assets/output_heatmap.png)
 
 ### Natural Normal Gaussian Imputation & Sensitivity Analysis
 
-- **Full Cohort Retention ($N=152$):** Natural Normal Gaussian Imputation preserved $100\%$ of patient records ($N=152$), salvaging 122 high-acuity cases that traditional deletion algorithms would have discarded.
+- **Full Cohort Retention ($N=152$):** Natural Normal Gaussian Imputation preserved $100\%$ of patient records ($N=152$), salvaging $122$ high-acuity cases that traditional deletion algorithms would have discarded.
 
 - **Kernel Density Estimation (KDE) Variance Stability:** Density plots verify that Natural Normal imputation populates unmeasured anatomical fields around normal physiological centers without artificially collapsing variance into a single point-estimate mean.
 
@@ -75,11 +75,11 @@ By pairing structural echo severity with the engineered Medication Burden Index 
 
 ### Medication Burden Index (MBI) as a Triage Tool
 
-- **Establishing the "Native Constant" (MBI = 2.27):** Statistical modeling identifies 2.27 as the cohort's baseline medication burden. A patient at this score represents a standard, stable valvular case.
+- **Establishing the "Native Constant" ($MBI = 2.27$):** Statistical modeling identifies $2.27$ as the cohort's baseline medication burden. A patient at this score represents a standard, stable valvular case.
 
-- **The Complexity Floor (MBI = 4.0):** Setting the entry floor for high-priority intervention at 4.0 captures the top 25% of cohort severity. For example, combining the baseline Native Constant (2.27) with the additive risk coefficient of a Mixed Mitral lesion (2.22) yields $MBI \approx 4.5$, proving that an MBI of 4.0 mathematically isolates complex multi-lesion phenotypes requiring intense pharmacological support.
+- **The Complexity Floor ($MBI = 4.0$):** Setting the entry floor for high-priority intervention at 4.0 captures the top 25% of cohort severity. For example, combining the baseline Native Constant ($2.27$) with the additive risk coefficient of a Mixed Mitral lesion ($2.22$) yields $MBI \approx 4.5$, proving that an MBI of $4.0$ mathematically isolates complex multi-lesion phenotypes requiring intense pharmacological support.
 
-- **The Critical Threshold Red Flag (MBI = 5.25):** Crossing an MBI of 5.25 marks the point where medical therapy fails to mask underlying disease. This cutoff predicts Critical Pulmonary Hypertension (RVSP > 60 mmHg) with 85% Precision, capturing a cohort with high mean RVSP (48.0 ± 34.3 mmHg) and high female prevalence (88.2%).
+- **The Critical Threshold Red Flag ($MBI = 5.25$):** Crossing an MBI of $5.25$ marks the point where medical therapy fails to mask underlying disease. This cutoff predicts Critical Pulmonary Hypertension ($RVSP > 60 mmHg$) with $85\%$ Precision, capturing a cohort with high mean RVSP ($48.0 \pm 34.3 mmHg$) and high female prevalence ($88.2\%$).
 
 ![MBI Zones](assets/output_triage_zones.png)
 
