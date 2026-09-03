@@ -11,3 +11,7 @@ lib/
 # Python cache
 __pycache__/
 *.py[cod]
+
+# Files
+README old.md
+README draft.md

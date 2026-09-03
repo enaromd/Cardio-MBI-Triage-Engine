@@ -1,44 +1,8 @@
 # Quantifying Clinical Gaps in Valvular Heart Disease: Using the Medication Burden Index (MBI) to Triage High-Complexity Intervention Candidates.
-## 📄 Executive summary
 
-| Section | Content |
-|:---|:---|
-| **Context**|International Cardiology mission phase 1 (2025 cohort) analysis of Valvular Heart Disease in León, Nicaragua|
-| **Challenge** | In a 10-day high-volume "clinical sprint," cardiologists often skip fields for healthy valves: If a valve is normal, the entry is left blank to save time. This creates Missing Not At Random (MNAR) bias. |
-| **Strategy** | Natural Normal Imputation: Gaussian noise centered around healthy means (e.g., RVSP $25 \pm 4 \text{ mmHg}$) to restore the statistical variance of a healthy population. |
-| **Key metric** | Medication Burden Index (MBI): A quantitative surrogate for clinical complexity and pulmonary hypertension based on pharmacological intensity. |
-| **Outcome** | MBI-based triage proposal for identification of complex and high risk patients. |
+## Project background
 
-## 📑 Table of Contents
-
-* [Outcome: MBI-driven Triage](#-outcome-mbi-driven-triage)
-* [Data Context](#-data-context)
-* [Technical Structure](#-technical-structure)
-* [Database Schema and Governance](#-database-schema-and-governance)
-* [Centralized Domain Governance](#-centralized-domain-governance)
-* [Feature Engineering and Bias Mitigation](#️-feature-engineering-and-bias-mitigation)
-  * [The Medication Burden Index (MBI)](#the-medication-burden-index-mbi)
-  * [Imputation to restore physiologic variance](#imputation-to-restore-physiologic-variance)
-* [Cohort analysis and triage zone boundaries](#-cohort-analysis-and-triage-zone-boundaries)
-* [Dashboard deployment](#-dashboard-deployment)
-
-## 📊 Outcome: MBI-driven triage
-The MBI score serves as a robust proxy for anatomical complexity and critical hemodynamic compromise (AUC: 0.82).
-
-![MBI Zones](assets/output_triage_zones.png)
-
-Based on the cohort analysis, these thresholds guide the intake staff in prioritizing patients.
-
-| MBI Range | Triage Zone | Clinical Interpretation |
-|---:|:---|:---|
-| **< 4.0** | **Zone 1: Standard** | Likely compensated. |
-| **4.0 - 5.25** | **Zone 2: Complex** | Optimal intervention area: High probability of hemodynamic complexity. |
-| **5.25 - 5.5** | **Zone 3: Critical** | 85% Precision for Critical Pulmonary Hypertension ($RVSP > 60~mmHg$). |
-| **> 5.5** | **Zone 4: Futility risk** | Intervention risk likely outweighs potential hemodynamic gain. |
-
-## 🔎 Data context
-
-This project analyzes real-world clinical data from a high-volume medical mission in León, Nicaragua. The cardiology brigade operates via a structured, three-phase clinical workflow designed to bridge the gap between primary screening and advanced cardiac intervention:
+This analysis evaluates real-world clinical data from a high-volume humanitarian cardiology mission in León, Nicaragua. Operating as an acute specialty-care delivery model, the mission bridges the gap between primary community screening and advanced tertiary cardiac intervention through a structured, three-phase clinical workflow:
 
 * **Phase 1 — General Cardiology Clinic:** High-throughput diagnostic screening, echocardiographic evaluation, and procedure prioritization.
 
@@ -46,222 +10,88 @@ This project analyzes real-world clinical data from a high-volume medical missio
 
 * **Phase 3 — Interventional Cardiology:** Percutaneous structural heart procedures and collaborative case reviews.
 
-This analysis focuses on the Phase 1 - 2025 Cohort. To ensure clinical relevance and focus on adult structural heart disease, the population was filtered as follows:  
+From the perspective of a Data Analyst embedded within the mission, this project evaluates the Phase 1 — 2025 Cohort. To focus analysis on adult structural heart disease and maximize intervention yield, the baseline population ($N = 187$) was filtered to exclude patients under 15 years old and those with entirely normal echocardiographic findings, yielding a final analytical sample of $N = 152$ patients.
 
-* **Initial Enrollment:** $N=187$ patients.
+Insights and recommendations are provided on the following key areas:
 
-* **Exclusion Criteria:** Patients $< 15$ years old or those with entirely normal echocardiographic findings (no disease criteria met).
+- **[Forensic data audit](#forensic-data-audit)**
+- **[Natural Normal Gaussian Imputation & Sensitivity Analysis](#natural-normal-gaussian-imputation--sensitivity-analysis)**
+- **[Medication Burden Index (MBI) as a Triage Tool](#medication-burden-index-mbi-as-a-triage-tool)**
 
-* **Final Analytical Sample:** $N=152$ patients.
+## Data structure & initial checks
 
+The project's underlying MySQL database structure, engineered from digitized bedside charts to power the Tableau dashboard, consists of five tables anchored on $N = 152$ patient records. A description of each table is as follows:
 
-## 💻 Technical structure
-### Project Schema
-```text
-├── data/
-│   ├── raw/                                    # Original CSV
-│   └── processed/                              # Post-Transformation data
-├── modules/                                    # Tableau files
-│   └── config.py                               # Python configuration dictionaries
-├── notebooks/
-│   ├── 01_extraction_transformation.ipynb      # Extraction & Transformation
-│   ├── 02_loading.ipynb                        # MySQL connector script
-│   └── 03_analysis.ipynb                       # Data Analysis
-├── sql/                                        # SQL-related files
-│   └── schema_cardio_mbi.mwb                   # MySQL database schema
-├── tableau/                                    # Tableau files
-├── assets/                                     # Auxiliary files for documentation
-├── requirements.txt                            # Python library dependencies
-└── README.md
-```
+- `fact_patient`: Primary anchor table containing individual demographic baselines, triage vitals, and continuous quantitative echocardiographic parameters ($N = 152$).  
 
-## 💽 Database schema and governance
-To transition this dataset from a flat file to an analytics-ready warehouse, the database layer implements a **5-table Snowflake Schema** . While this structure enforces **Third Normal Form (3NF)** compliance across core tables to eliminate update anomalies, it implements a pragmatic, **denormalized hybrid strategy** within the associative entities to optimize analytic queries:
+- `dim_diagnoses`: Reference dimension table enforcing normalized diagnostic nomenclature, valvular lesion types, and severity classifications.
 
-* **Data Governance & Privacy:** All underlying source rows have been completely stripped of Protected Health Information (PHI) identifiers, ensuring full anonymization and alignment with international medical data privacy standards before pipeline ingest.
-* **Entity Isolation:** Patient-level continuous demographics and baseline variables are strictly isolated within `fact_patient`, anchoring the baseline denominator ($N=152$).
-* **Nomenclature Normalization:** Dimension tables `dim_diagnoses` and `dim_medications` function as a single source of truth, enforcing clean text constraints and eliminating manual string typographical variances.
-* **Many-to-Many Resolution:** Complex multi-valvular disease records and polypharmacy exposures are decoupled into dedicated bridge tables (`bridge_diagnoses` and `bridge_medications`). This database design allows to execute localized cohort queries without duplicating core patient parameters.  
-* **Programmatic Pipeline Execution:** The complete schema instantiation and transactional loading sequence are engineered natively in Python using `mysql-connector-python`.
+- `dim_medications`: Reference dimension table cataloging pharmacological agents, therapeutic drug classes, and maximum daily dose limits required for dosage normalization.
+
+- `bridge_diagnoses`: Associative bridge table resolving many-to-many relationships between patients and complex multi-valvular disease presentations.
+
+- `bridge_medications`: Associative bridge table mapping polypharmacy regimens to patients, enabling granular MBI score calculations without duplicating core demographic rows.
 
 ![Database schema](assets/database_schema.png)
 
-## 🧠 Centralized Domain Governance
+## Executive summary
 
-To ensure pipeline reproducibility and maintainability, this project decouples clinical domain parameters from database execution. All diagnostic thresholds, severity schemas, and pharmacological weights are encapsulated within a centralized, object-oriented master registry: `ClinicalConfig`.
+### Overview of findings
 
-By isolating these parameters from the underlying data engineering code, `config.py` serves as the **Medical Brain** of the stack—eliminating the anti-pattern of scattering hardcoded numbers across separate notebook cells.
+An audit of the 2025 General Cardiology Clinic ($N=152$) reveals that missingness in echocardiographic parameters is Missing Not At Random (MNAR), driven by clinicians selectively omitting quantitative measurements when qualitative scans show non-pathological features. To prevent dropping 80% of incomplete patient cases, the pipeline applies Natural Normal Gaussian Imputation to unmeasured echo fields, preserving true population variance without distorting clinical risk.
 
-```python
-# Conceptual structure of the centralized configuration dictionaries
-class ClinicalConfig:
-    def __init__(self):
-        # Severity and scoring maps for valvular disease
-        self.severity = { 'critical': 3.5, 'severe': 3.0, 'moderate': 2.0, 'none': 0.0 }
+By pairing structural echo severity with the engineered Medication Burden Index (MBI), this pipeline introduces a Diagnostic Discordance Framework. Uncovering divergence between anatomical disease (echo) and pharmacological intensity (MBI) exposes a baseline Native Constant (MBI = 2.27) and a Critical Red Flag Threshold (MBI = 5.25), operationalizing MBI as an objective, point-of-registration triage score to prioritize high-yield intervention candidates and catch end-stage hemodynamic decompensation.
 
-        # Medication classes and their weights based on the targeted clinical conditions 
-        self.class_weights = {
-            'Diuretics_Loop': 3.0,          # Marker of active congestive heart failure / fluid overload
-            'RAAS_Inhibitors': 2.0,         # Standard neurohormonal blockade for ventricular remodeling
-            'Calcium_Channel_Blockers': 1.0,           # Baseline hypertension maintenance therapy
-        }
+![MBI Zones](assets/dashboard.png)
 
-        # Physiological parameter and their bounds for Gaussian Imputation
-        self.normal_variables = {
-            'MS MG (mmHg)': (1.5, 0.5), # (Mean, Std Dev)
-            'RVSP': (25.0, 4.0)
-        }
-```
+## Insights deep dive
 
-## 🛠️ Feature engineering and bias mitigation
-### The Medication Burden Index (MBI)
-The MBI transforms fragmented medication lists into a single, actionable score that quantifies how aggresively a patient is being medically managed, which serves as a proxy for both physiological severity and care complexity.
+### Forensic data audit
 
-We define the score mathematically as:
+- **Triage Vitals Achieve 99.67% Completeness:** Physical and physiological safety metrics recorded a missingness rate of 0.33% ($n=151.5$ complete records), verifying that frontline nursing triage captures baseline parameters reliably across the entire cohort.
 
-$$MBI = \sum \left( \text{Class Weight} \times \frac{\text{Total Daily Dose}}{\text{Maximum Daily Dose}} \right)$$
+- **Structural Dimensions Exhibit 81.77% Selective Sparsity:** Anatomical dimension parameters (IVSd, LVIDd, LVPWd, LVIDs) showed an average missingness of 81.77%, confirming that clinicians document precise caliper measurements primarily when obvious chamber enlargement is observed.
 
-* **Dose Ratio:** The total milligrams consumed by the patient in 24 hours. For example, a patient on Furosemide 40mg every 12h has a $TDD=80~mg$.
+- **Hemodynamic Metrics Dropout at 66.89%:** Functional echo variables (TR Vmax, RVSP, MS MG) showed 66.89% missingness, with peak pressure gradients recorded almost exclusively during active valvular regurgitation or stenosis.
 
-* **Weight:** Based on the drug's therapeutic impact for valvular heart disease (e.g., Loop Diuretics have a higher weight than Lipid Lowering agents).
+![MBI Zones](assets/output_heatmap.png)
 
-| Weight | Priority | Medication Classes |
-|---:|:---|:---|
-| **3.0** | Critical | Loop diuretics, pulmonary vasodilators. |
-| **2.0** | High | RAAS inhibitors, beta-blockers, SGLT2 inhibitors. |
-| **1.0** | Moderate | Anticoagulants, calcium channel blockers. |
-| **0.5** | Maintenance | Statins. |
+### Natural Normal Gaussian Imputation & Sensitivity Analysis
 
-**Implementation example: Normalizing calcium channel blockers (CCBs)**
+- **Full Cohort Retention ($N=152$):** Natural Normal Gaussian Imputation preserved $100\%$ of patient records ($N=152$), salvaging 122 high-acuity cases that traditional deletion algorithms would have discarded.
 
-To ensure the MBI reflects true clinical intensity rather than raw milligrams, we normalize dosages against their therapeutic ceilings. Consider two patients on Calcium Channel Blockers (CCBs):
+- **Kernel Density Estimation (KDE) Variance Stability:** Density plots verify that Natural Normal imputation populates unmeasured anatomical fields around normal physiological centers without artificially collapsing variance into a single point-estimate mean.
 
-| Patient | Medication | Raw dosage | Frequency | Total Daily Dose (TDD) | Maximum Daily Dose (MDD) | Dose ratio |
-| :- | :- | -: | :- | -: | -: | -: |
-| A | **Nifedipine** | 20 mg | BID | 40 mg | 120 mg | 0.33 |
-| B | **Amlodipine** | 10 mg | QD | 10 mg | 10 mg | 1.00 |
+- **Logical Mean Shifts in Sensitivity Audits:** Comparing the raw measured sub-cohort against the fully imputed population demonstrated expected, non-biased mean shifts (e.g., mean $LVIDd$ shifting toward healthy reference intervals) while keeping overall risk tiering intact.
 
-**Clinical Insight:** Despite Patient A taking a higher milligram count (40mg vs 10mg), Patient B is at a higher therapeutic intensity (100% of max dose). The MBI correctly captures this higher therapeutic intensity for Patient B, which would be lost in a non-normalized dataset.
-
-### Imputation to restore physiologic variance
-
-#### The Problem: The "Silence of the Normal" (MNAR bias)
-
-In a 10-day clinical sprint, data is recorded on physical paper charts at the bedside. This workflow creates a specific form of bias: Missing Not At Random (MNAR).
-
-In high-volume brigade settings, "Missingness" is a clinical surrogate for "Normal." A cardiologist under extreme time pressure will prioritize documenting a pathological $1.2 cm^{2}$ Mitral Valve area but will likely leave the Aortic Valve field blank if it appears healthy. Standard imputation (mean/median) would erroneously assign "diseased" values to these healthy valves, leading to Model Alarmism and an overestimation of cohort severity.
-
-#### The Strategy: "Natural Normal" Imputation
-
-To preserve the statistical integrity of the cohort and prevent pathology bias, we utilize a **Natural Normal Imputation** strategy. Instead of treating nulls as errors, we treat them as "Healthy Proxies" and inject physiological noise centered around healthy clinical variables to approximate the natural variance of the population:
-
-$$X_{imp} \sim \mathcal{N}(\mu_{healthy}, \sigma^{2}_{phys})$$
-
-*Example:* For a missing Right Ventricular Systolic Pressure (RVSP), we assume a "normal" physiological state. Rather than imputing the cohort mean (which may be elevated due to severe mitral disease), we impute values centered around $25\text{ mmHg}$ with a small standard deviation ($\sigma \approx 4\text{ mmHg}$). This reflects a healthy pulmonary pressure range of $19\text{--}31\text{ mmHg}$.
-
-#### Imputation sensitivity analysis
-We plot **measured** (grey) vs. **imputed** (blue) to visually compare the distributions before and after the injection of Gaussian noise.
 ![Natural normal imputation](assets/output_kde_imputation.png)
 
-| Parameter | Measured mean | Imputed mean | Delta |
-| :- | -: | -: | :- |
-| MS MG (mmHg)  | 11.4 | 3.8 | -7.6 | 
-| AO V2 max | 4.3 | 1.6 | -2.6 | 
-| RVSP | 51.0 | 33.6 | -17.5 | 
-| LVIDd | 5.2 | 4.8 | -0.4 | 
+### Medication Burden Index (MBI) as a Triage Tool
 
-The table reveals a Significant Shift in means for hemodynamic variables, such as RVSP dropping from 51.0 mmHg (measured) to 33.6 mmHg (imputed). This delta is the mathematical proof of a **High-Severity Documentation Threshold**. It confirms that clinicians only performed time-intensive quantitative measurements when a preliminary "Quick Scan" indicated significant pathology—leaving the healthy portion of the population "silent" but present.
+- **Establishing the "Native Constant" (MBI = 2.27):** Statistical modeling identifies 2.27 as the cohort's baseline medication burden. A patient at this score represents a standard, stable valvular case.
 
-## 📈 Cohort analysis and triage zone boundaries
-### 1. Statistical Baseline & Cross-Stratification
-To map the mathematical interaction between physiological degradation and active medical suppression, the cohort is cross-examined across distinct phenotypic grains. 
+- **The Complexity Floor (MBI = 4.0):** Setting the entry floor for high-priority intervention at 4.0 captures the top 25% of cohort severity. For example, combining the baseline Native Constant (2.27) with the additive risk coefficient of a Mixed Mitral lesion (2.22) yields $MBI \approx 4.5$, proving that an MBI of 4.0 mathematically isolates complex multi-lesion phenotypes requiring intense pharmacological support.
 
-The tables below provide the statistical baseline backing our triage logic, demonstrating how clinical indicators shift across the MBI triage boundaries (Table 1) and across historical surgical interventions (Table 2).
+- **The Critical Threshold Red Flag (MBI = 5.25):** Crossing an MBI of 5.25 marks the point where medical therapy fails to mask underlying disease. This cutoff predicts Critical Pulmonary Hypertension (RVSP > 60 mmHg) with 85% Precision, capturing a cohort with high mean RVSP (48.0 ± 34.3 mmHg) and high female prevalence (88.2%).
 
-#### Table 1: Clinical Cohort Characteristics by MBI Triage Zone
+![MBI Zones](assets/output_triage_zones.png)
 
-| Clinical Metric | All Patients (N=152) | Zone 1 (n=113) | Zone 2 (n=22) | Zone 3 (n=17) |
-| --- | --- | --- | --- | --- |
-| **Age (years)** | $47.1 \pm 15.7$ | $45.3 \pm 16.4$ | $54.6 \pm 10.1$ | $49.8 \pm 13.4$ |
-| **Female (%)** | $64.5\%$ | $58.4\%$ | $77.3\%$ | $88.2\%$ |
-| **Heart Rate (bpm)** | $76.6 \pm 14.1$ | $76.2 \pm 14.2$ | $79.5 \pm 14.2$ | $75.8 \pm 14.1$ |
-| **Systolic BP (mmHg)** | $124.6 \pm 18.7$ | $127.4 \pm 18.7$ | $113.6 \pm 17.0$ | $120.9 \pm 15.2$ |
-| **Diastolic BP (mmHg)** | $76.7 \pm 12.5$ | $77.7 \pm 12.9$ | $72.9 \pm 10.3$ | $75.2 \pm 11.6$ |
-| **RVSP (mmHg)** | $33.3 \pm 20.3$ | $30.7 \pm 17.2$ | $35.5 \pm 16.2$ | $48.0 \pm 34.3$ |
-| **LVEF (%)** | $58.2 \pm 11.4$ | $59.3 \pm 10.5$ | $54.4 \pm 14.5$ | $56.1 \pm 12.1$ |
-| **MBI** | $2.9 \pm 2.1$ | $1.9 \pm 1.2$ | $4.7 \pm 0.5$ | $7.2 \pm 1.3$ |
+# Recommendations
 
-#### Table 2: Clinical Baselines by Intervention
+Based on the insights and findings above, we would recommend the cardiology mission team to consider the following:
 
-| Biomarker / Metric | All Patients (N=152) | Native (n=110) | Percutaneous (n=17) | Surgical (n=25) |
-| --- | --- | --- | --- | --- |
-| **Age (years)** | $47.1 \pm 15.7$ | $47.7 \pm 16.0$ | $42.9 \pm 14.4$ | $47.4 \pm 14.9$ |
-| **Female (%)** | $64.5\%$ | $61.8\%$ | $88.2\%$ | $60.0\%$ |
-| **Heart Rate (bpm)** | $76.6 \pm 14.1$ | $76.3 \pm 14.5$ | $71.2 \pm 13.2$ | $81.5 \pm 11.8$ |
-| **Systolic BP (mmHg)** | $124.6 \pm 18.7$ | $124.8 \pm 19.4$ | $123.8 \pm 18.2$ | $124.7 \pm 16.3$ |
-| **Diastolic BP (mmHg)** | $76.7 \pm 12.5$ | $76.6 \pm 13.6$ | $75.7 \pm 9.7$ | $77.7 \pm 8.2$ |
-| **RVSP (mmHg)** | $33.3 \pm 20.3$ | $35.8 \pm 22.6$ | $30.3 \pm 13.7$ | $24.3 \pm 3.7$ |
-| **LVEF (%)** | $58.2 \pm 11.4$ | $57.1 \pm 13.1$ | $60.2 \pm 3.9$ | $62.0 \pm 0.0$ |
-| **MBI** | $2.9 \pm 2.1$ | $3.0 \pm 2.2$ | $3.2 \pm 2.6$ | $1.9 \pm 1.4$ |
+- **Operationalize $MBI = 5.25$ as an Point-of-Registration Red Flag.** Calculate MBI at check-in. Patients scoring $\ge 5.25$ should bypass general queueing and be routed to priority echocardiography and senior specialist evaluation.
 
-### 2. Receiver Operating Characteristic (ROC) Threshold Optimization
+- **Target Zone 2 ($MBI = 4.0 - 5.5$) for Primary Intervention Case Selection.** Prioritize Zone 2 patients ($MBI = 4.0 - 5.5$) for interventional and surgical case candidate lists, maximizing procedural yield before patients cross into end-stage failure ($MBI > 5.5$).
 
-To rigorously validate the **Medication Burden Index (MBI)** as a high-precision diagnostic proxy for hemodynamic risk, a Receiver Operating Characteristic (ROC) curve analysis was executed against the cohort's reference standard standard: **Significant Pulmonary Hypertension (PH)**, defined clinically as an $\text{RVSP} \ge 60\text{ mmHg}$.
+- **Deploy "Undertreatment" Alerts for High-Acuity Access Barriers.** Cross-reference qualitative echo severity against pharmacological load to trigger priority pharmacy and social work consultations for patients with severe valvular lesions but $MBI < 1.0$, exposing critical medication access barriers.
 
-![MBI Triage ROC Curve](assets/output_roc_rvsp.png)
+# Assumptions and Caveats
 
-#### Algorithmic Performance Metrics
-* **Area Under the Curve (AUC):** **$0.72$** 
-  * *Interpretation:* An AUC of $\approx 0.72$ establishes that the MBI possesses strong discriminative capacity to distinguish between managed baseline states and severe secondary hemodynamic failure purely from a patient's pharmacological footprint.
-* **Optimal Cutoff Threshold (Youden's J Index):** **$5.25$**
-  * *Statistical Trade-off:* This mathematically optimizes the balance between sensitivity and specificity, providing the exact empirical boundary utilized to define the transition from **Zone 2** into the **Zone 3 Critical Tier**.
+Throughout the analysis, multiple assumptions were made to manage challenges with the data. These assumptions and caveats are noted below:
 
-#### Methodological Paradox: Maximizing PPV for Triage Optimization
-In classic diagnostic classification tasks, an algorithmic **Recall (Sensitivity) of 0.17** might be flagged as under-optimized. However, within the context of a clinical evaluation sprint, prioritizing **Positive Predictive Value (PPV = 0.94)** serves a profound clinical function:
+- **Cohort exclusion filter:** Pediatric patients (<15 years old) and patients with entirely normal echocardiograms were excluded ($N=187 \to 152$) to focus the pipeline on adult structural and valvular heart disease.
 
-1. **Rule-In Precision (PPV = 0.85):** If the MBI model issues an alert for severe, high-complexity risk, it is mathematically correct 94% of the time (under a 6% false-positive threshold). This provides international surgical screening brigades with an absolute, rapid "Rule-In" mechanism for prompt coordinating validation Transesophageal Echocardiography (TEE).
-2. **Quantifying the Care Gap:** The remaining 68% of patients who exhibit high anatomical complexity on echo but maintain a low MBI are not standard errors; they represent the **true unoptimized care gap**—patients who are severely structurally deteriorated but completely lack appropriate therapeutic coverage due to regional medical access boundaries.
+- **MNAR Imputation Logic:** Unrecorded continuous echocardiographic parameters were assumed to be omitted due to non-pathological appearance. Missing fields were imputed via Gaussian distributions parameterized by normal baseline constants ($\mu, \sigma$) defined in `ClinicalConfig`.
 
-By leveraging the ROC-optimized $5.25$ cutoff, the engine moves beyond a theoretical classifier—it establishes a standardized, objective framework for immediate field triage.
-
-### 3. The Regression Mismatch (Care Gap)
-
-We modeled the relationship between a patient's **Medication Burden Index (MBI)** and their **Right Ventricular Systolic Pressure (RVSP)**. Instead of treating the residuals of this model as noise, this pipeline identifies the **statistical mismatch** to identify potential care gaps.
-
-#### Visualizing Diagnostic Discordance & Clinical Phenotypes
-
-Mapping the interaction between physiological stress and therapeutic suppression helps us reveal a more complex clinical reality. To expose these hidden phenotypes, the cohort's diagnostic profile is evaluated across two distinct analytical lenses:
-
-![MBI vs RVSP discordance](assets/output_regression_mismatch.png)
-
-* **MBI vs. RVSP Analysis:** This plot maps individual patient positions by crossing the Medication Burden Index (Index Test) against Right Ventricular Systolic Pressure (Reference Standard). The shaded regression interval represents the expected trend of **Concordant** disease progression. Crucially, this visualization highlights two highly problematic diagnostic deviations:
-  * **The Complexity Zone (Blue):** Patients demonstrating artificially suppressed or "moderate" hemodynamics achieved only via exceptional, high-intensity pharmacological management.
-  * **The Critical Zone (Red):** Under-medicated individuals exhibiting advanced hemodynamic failure relative to their therapeutic coverage.
-
-![Clinical drivers of dissonance](assets/output_bar_mismatch.png)
-
-* **Clinical Drivers of Discordance:** To move past abstract data distribution, this frequency breakdown isolates the specific pathophysiological etiologies (e.g., mixed mitral disease, atrial fibrillation) that actively fuel these discordant states, pinning down the underlying clinical triggers forcing patients out of equilibrium.
-
-By evaluating where patients fall relative to the expected concordant baseline, we can deconstruct the true physiological toll required to maintain superficial stability.
-
-<div style="padding: 15px; border: 1px solid #003152; border-radius: 5px; background-color: #eff9ff; color: #003152;">
-<strong style="font-size: 1.2em;">Deep Dive: The Pharmacological Cost of Hemodynamic Stability</strong>
-
-<p><b>1. The SBP "Warning Light":</b> A critical discovery in the <b>Zone 2 (MBI 4.0 - 5.25)</b> and <b>Aggressive Treatment</b> cohorts is the significant drop in <b>Systolic BP (113.6 - 116.2 mmHg)</b> compared to the stable cohort (~127 mmHg). This indicates that high pharmacological intensity is successfully lowering afterload and managing congestion, but the patient is operating at their <i>physiological limit</i>. In a mission setting, these patients are "fragile-stable"—one missed dose away from a crisis.</p>
-
-<p><b>2. The "Masked" Discordance (The Complexity Zone):</b> Table 1 identifies the <b>Aggressive Treatment (n=17)</b> group as the most clinically deceptive. Despite having an <b>RVSP (48.0 mmHg)</b> that appears "moderate" on an Echo, they require an <b>MBI of 7.2</b> (the highest in the study) to maintain that pressure.</p>
-
-<p><b>3. Threshold Validation (The 5.25 Red Flag):</b> Table 2 validates <b>Zone 3 (MBI > 5.25)</b> as the true "Danger Zone." This cohort captures the highest mean <b>RVSP (48.0 ± 34.3 mmHg)</b> and the highest percentage of females (88.2%). This suggests that as the MBI crosses the 5.25 mark, the "masking" effect of medication is overwhelmed by the underlying disease, making this the optimal cutoff for intervention triage.</p>
-
-<p><b>4. Re-Normalizing the "Native Constant" (Table 3):</b> The <b>Surgical</b> cohort presents a fascinating benchmark. Their <b>MBI (1.9)</b> and <b>RVSP (25.1)</b> are the lowest in the entire study, while their <b>LVEF (60%)</b> is the highest. This proves that successful intervention "resets" the Native Constant. The heart is no longer struggling (low MBI) and is no longer over-contracting (normal LVEF), representing the goal of the cardiology mission.</p>
-</div>
----
-
-## 📊 Dashboard Deployment
-
-To move these analytical insights from the notebook to the clinical frontlines, the clean data infrastructure is mirrored into an interactive Tableau deployment. This allows field coordinators to filter the complete $N=152$ cohort across specific diagnostic sub-groups dynamically.
-
-![Tableau Dashboard](assets/dashboard.png)
-
-* **Dynamic Patient Profiling:** Cross-filters clinical registries instantly across disease categories.
-* **Real-time Stratification:** Renders real-time patient rosters partitioned into their corresponding MBI Triage Zones to help streamline surgical planning rounds during active medical sprints.
+- **Qualitative Echo Mapping:** Qualitative descriptions in clinical notes ("mild", "moderate", "severe") were standardized to a continuous numerical scale ($0.0$ to $3.0$) matching American Society of Echocardiography (ASE) severity grades.
