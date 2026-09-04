@@ -87,7 +87,7 @@ By pairing structural echo severity with the engineered Medication Burden Index 
 
 Based on the insights and findings above, we would recommend the cardiology mission team to consider the following:
 
-- **Operationalize $MBI = 5.25$ as an Point-of-Registration Red Flag.** Calculate MBI at check-in. Patients scoring $\ge 5.25$ should bypass general queueing and be routed to priority echocardiography and senior specialist evaluation.
+- **Operationalize $MBI = 5.25$ as a Point-of-Registration Red Flag.** Calculate MBI at check-in. Patients scoring $\ge 5.25$ should bypass general queueing and be routed to priority echocardiography and senior specialist evaluation.
 
 - **Target Zone 2 ($MBI = 4.0 - 5.5$) for Primary Intervention Case Selection.** Prioritize Zone 2 patients ($MBI = 4.0 - 5.5$) for interventional and surgical case candidate lists, maximizing procedural yield before patients cross into end-stage failure ($MBI > 5.5$).
 
