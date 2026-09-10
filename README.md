@@ -1,5 +1,8 @@
 # Quantifying Clinical Gaps in Valvular Heart Disease: Using the Medication Burden Index (MBI) to Triage High-Complexity Intervention Candidates.
 
+[![en](https://img.shields.io/badge/lang-en-blue.svg)](https://github.com/enaromd/Cardio-MBI-Triage-Engine/blob/main/README.md)
+[![es](https://img.shields.io/badge/lang-es-red.svg)](https://github.com/enaromd/Cardio-MBI-Triage-Engine/blob/main/README.es.md)
+
 ## Project background
 
 This analysis evaluates real-world clinical data from a high-volume humanitarian cardiology mission in León, Nicaragua. Operating as an acute specialty-care delivery model, the mission bridges the gap between primary community screening and advanced tertiary cardiac intervention through a structured, three-phase clinical workflow:
@@ -49,7 +52,7 @@ An audit of the 2025 General Cardiology Clinic ($N=152$) reveals that missingnes
 
 By pairing structural echo severity with the engineered Medication Burden Index (MBI), this pipeline introduces a Diagnostic Discordance Framework. Uncovering divergence between anatomical disease (echo) and pharmacological intensity (MBI) exposes a baseline Native Constant ($MBI = 2.27$) and a Critical Red Flag Threshold ($MBI = 5.25$), operationalizing MBI as an objective, point-of-registration triage score to prioritize high-yield intervention candidates and catch end-stage hemodynamic decompensation.
 
-![MBI Zones](assets/dashboard.png)
+![Dashboard](assets/dashboard.png)
 
 ## Insights deep dive
 
@@ -61,7 +64,7 @@ By pairing structural echo severity with the engineered Medication Burden Index 
 
 - **Hemodynamic Metrics Dropout at 66.89%:** Functional echo variables ($\text{TR Vmax, RVSP, MS MG}$) showed $66.89\%$ missingness, with peak pressure gradients recorded almost exclusively during active valvular regurgitation or stenosis.
 
-![MBI Zones](assets/output_heatmap.png)
+![Echocardiogram heatmap](assets/output_heatmap.png)
 
 ### Natural Normal Gaussian Imputation & Sensitivity Analysis
 
