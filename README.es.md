@@ -1,7 +1,7 @@
 # Cuantificación de brechas clínicas en la enfermedad cardíaca valvular: uso del Índice de Carga Medicamentosa (MBI) para el triaje de candidatos a intervenciones de alta complejidad
 
 [![es](https://img.shields.io/badge/lang-es-red.svg)](https://github.com/enaromd/Cardio-MBI-Triage-Engine/blob/main/README.es.md)
-[![en](https://img.shields.io/badge/lang-en-blue.svg)](https://github.com/enaromd/Cardio-MBI-Triage-Engine/blob/main/README.md)
+[![en](https://img.shields.io/badge/lang-en-blue.svg)](https://github.com/enaromd/Cardio-MBI-Triage-Engine)
 
 ## Antecedentes del proyecto
 
